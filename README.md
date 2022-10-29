@@ -1,3 +1,2 @@
 # genome_engineering_pipeline
-Jupyter notebooks to retrieve predicted gRNAs from third-party website (check Terms of Use! This code simply demonstrates how it can be done, but does not endorse violating Terms of Use of third-party websites), as well as primer design around the gRNA-binding site
-
+Jupyter notebooks to automate the retrieval of predicted guide RNAs for gene-editing experiments, as well as primer design around guide RNA cut-sites. Retrieves gRNA predictions from Synthego website (check Terms of Use of third-party websites prior to using the notebook). Notebook requires gpe_module.
