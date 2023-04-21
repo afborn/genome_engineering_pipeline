@@ -10,6 +10,7 @@ from pybiomart import Server
 import pandas as pd
 import urllib.request
 import os
+import fnmatch
 # import nest_asyncio
 # nest_asyncio.apply()
 from selenium import webdriver
@@ -25,6 +26,7 @@ import requests
 import sys
 #imports for identifying knockout clones with seq 
 from Bio import SeqIO
+from Bio.SeqRecord import SeqRecord
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -225,50 +227,16 @@ def predict_gRNA_from_urls(df_genes_urls, path_to_gecko='D:\geckodriver\geckodri
             gRNAs_synth_min = []
  
             # loop over results
-            print(gene_symbol)
             for result in results:
                 gRNAs_synth.append(result.text)
-                print(len(gRNAs_synth), gRNAs_synth)
             if len(gRNAs_synth) == 11:
                 #extract minimal information for predicted gRNAs
                 gRNAs_synth_min = gRNAs_synth[5:9]
                 gRNAs_synth_array.append(gRNAs_synth_min)
-                print(gRNAs_synth_array)
                 #add gene id and gene name to arrays for later zipping of df
                 for entry in range(4):
                     gene_id_array.append(gene_id)
                     gene_name_array.append(gene_symbol)
-                print(gene_name_array)
-            elif len(gRNAs_synth) == 10:
-                #extract minimal information for predicted gRNAs
-                gRNAs_synth_min = gRNAs_synth[5:8]
-                gRNAs_synth_array.append(gRNAs_synth_min)
-                print(gRNAs_synth_array)
-                #add gene id and gene name to arrays for later zipping of df
-                for entry in range(3):
-                    gene_id_array.append(gene_id)
-                    gene_name_array.append(gene_symbol)
-                print(gene_name_array)
-            elif len(gRNAs_synth) == 9:
-                #extract minimal information for predicted gRNAs
-                gRNAs_synth_min = gRNAs_synth[5:7]
-                gRNAs_synth_array.append(gRNAs_synth_min)
-                print(gRNAs_synth_array)
-                #add gene id and gene name to arrays for later zipping of df
-                for entry in range(2):
-                    gene_id_array.append(gene_id)
-                    gene_name_array.append(gene_symbol)
-                print(gene_name_array)
-            elif len(gRNAs_synth) == 8:
-                #extract minimal information for predicted gRNAs
-                gRNAs_synth_min = gRNAs_synth[5]
-                gRNAs_synth_array.append(gRNAs_synth_min)
-                print(gRNAs_synth_array)
-                #add gene id and gene name to arrays for later zipping of df
-                for entry in range(1):
-                    gene_id_array.append(gene_id)
-                    gene_name_array.append(gene_symbol)
-                print(gene_name_array)
             else:
                 print('No gRNA prediction returned')
                 gene_name_no_gRNA_returned.append(gene_symbol)
@@ -288,28 +256,8 @@ def predict_gRNA_from_urls(df_genes_urls, path_to_gecko='D:\geckodriver\geckodri
     
     
     #flatten array gRNAs_synth_array
-    
-    gRNAs_synth_array_final = []
-    for i in range(len(gRNAs_synth_array)):
-        if len(gRNAs_synth_array[i]) > 15:
-            gRNAs_synth_array_final.append(gRNAs_synth_array[i])
-#     print(len(guides_non_flat[i]))
-#     print(type(guides_non_flat[i]))
-#     print(guides_non_flat[i])
-        else:
-            for item in gRNAs_synth_array[i]:
-                gRNAs_synth_array_final.append(item)
-    
-#     gRNAs_synth_array_final = []
-#     for i in range(len(gRNAs_synth_array)):
-#         if type(gRNAs_synth_array[i]) == "str":
-#             gRNAs_synth_array_final.append(gRNAs_synth_array[i])
-#         else:
-#             for item in gRNAs_synth_array[i]:
-#                 gRNAs_synth_array_final.append(item)
-            
-    #gRNAs_synth_array_final = [item for sublist in gRNAs_synth_array for item in sublist]
-    
+    gRNAs_synth_array_final = [item for sublist in gRNAs_synth_array for item in sublist]
+
     #put lists together into df
     try:
         df_predictions = pd.DataFrame(zip(gene_id_array, gene_name_array, gRNAs_synth_array_final), columns=('GENE ID', 'GENE NAME', 'PREDICTED GRNA'))
@@ -417,11 +365,10 @@ def primer3_primer_around_gRNA(df_gRNAs_info, upstream_dist=250, downstream_dist
     df_gRNAs_info["GRNA NAME"] = df_gRNAs_info["GENE NAME"] + '_loc_' + df_gRNAs_info["GRNA LOCATION"].astype(str)
 
     for row in range(len(df_gRNAs_info)):
-        beginning = df_gRNAs_info["GRNA LOCATION"].iloc[row] - upstream_dist
-        end = df_gRNAs_info["GRNA LOCATION"].iloc[row] + downstream_dist
+        beginning = df_gRNAs_info["GRNA LOCATION"].iloc[row] - 250
+        end = df_gRNAs_info["GRNA LOCATION"].iloc[row] + 250
         key = df_gRNAs_info["GRNA NAME"].iloc[row]
         value = df_gRNAs_info["GENE SEQUENCES"].iloc[row]
-        value = str(value)
         seq_slice = value[beginning:end]
         sequences_for_primer_design.append(seq_slice)
 
@@ -432,7 +379,7 @@ def primer3_primer_around_gRNA(df_gRNAs_info, upstream_dist=250, downstream_dist
     
     for entry in range(len(df_gRNAs_info)):
         
-        if len(df_gRNAs_info['SEQ SLICE'].iloc[entry]) == (upstream_dist+downstream_dist):
+        if len(df_gRNAs_info['SEQ SLICE'].iloc[entry]) == 500:
                 
             seq_dict = {
             'SEQUENCE_ID': df_gRNAs_info['PREDICTED GRNA'].iloc[entry],
@@ -459,7 +406,7 @@ def primer3_primer_around_gRNA(df_gRNAs_info, upstream_dist=250, downstream_dist
                 'PRIMER_MAX_SELF_END': 8,
                 'PRIMER_PAIR_MAX_COMPL_ANY': 12,
                 'PRIMER_PAIR_MAX_COMPL_END': 8,
-                'PRIMER_PRODUCT_SIZE_RANGE': [[(upstream_dist+downstream_dist)-((upstream_dist+downstream_dist)/4), (upstream_dist+downstream_dist)]],
+                'PRIMER_PRODUCT_SIZE_RANGE': [[375, 500]],
             })
             
         else:
@@ -474,7 +421,7 @@ def primer3_primer_around_gRNA(df_gRNAs_info, upstream_dist=250, downstream_dist
                                 
     return primer_df, no_primer_df
 
-
+   
 def split_fasta(file):
     #split a fasta file and name files according to header
     for record in SeqIO.parse(file, "fasta"):
@@ -529,15 +476,41 @@ def edited_ko_clone(csv_file_with_gRNAs=None, searchstring='', searchstring_name
     if csv_file_with_gRNAs:
         for entry in range(len(df_gRNAs)):
             guide_seq = df_gRNAs["GRNA"].iloc[entry]
+            guide_seq = guide_seq.replace("U","T")
             guide_name = df_gRNAs["GRNA NAME"].iloc[entry]
             guide_reverse_complement = Seq(guide_seq).reverse_complement()
             guide_reverse_complement = str(guide_reverse_complement)
-            
+            guide_reverse_complement = guide_reverse_complement.replace("U","T")
             for fname in directory:
                 if os.path.isfile(fname):
+                    if fnmatch.fnmatch(fname, '*.txt'):
+                        #print(fname)
+                        # Full path
+                        f = open(fname, 'r')
+                        sequence = f.read().replace('\n', '')
+                        if (guide_seq not in sequence) and (guide_reverse_complement not in sequence):
+                            gRNA_seq_not_found.append(guide_seq)
+                            gRNA_label_not_found.append(guide_name)
+                            file_name_not_found.append(fname)
+                        elif (guide_seq in sequence) or (guide_reverse_complement in sequence):
+                            gRNA_seq_found.append(guide_seq)
+                            gRNA_label_found.append(guide_name)
+                            file_name_found.append(fname)
+                        f.close()
+    elif searchstring:
+        guide_seq = searchstring
+        guide_seq = guide_seq.replace("U","T")     
+        guide_name = searchstring_label
+        guide_reverse_complement = Seq(guide_seq).reverse_complement()
+        guide_reverse_complement = str(guide_reverse_complement)
+        guide_reverse_complement = guide_reverse_complement.replace("U","T")
+            
+        for fname in directory:
+            if os.path.isfile(fname):
+                if fnmatch.fnmatch(fname, '*.txt'):
                     # Full path
                     f = open(fname, 'r')
-                    sequence = f.read()
+                    sequence = f.read().replace('\n', '')
                     if (guide_seq not in sequence) and (guide_reverse_complement not in sequence):
                         gRNA_seq_not_found.append(guide_seq)
                         gRNA_label_not_found.append(guide_name)
@@ -548,30 +521,9 @@ def edited_ko_clone(csv_file_with_gRNAs=None, searchstring='', searchstring_name
                         gRNA_label_found.append(guide_name)
                         file_name_found.append(fname)
                     f.close()
-    elif searchstring:
-        guide_seq = searchstring
-        guide_name = searchstring_label
-        guide_reverse_complement = Seq(guide_seq).reverse_complement()
-        guide_reverse_complement = str(guide_reverse_complement)
-            
-        for fname in directory:
-            if os.path.isfile(fname):
-                # Full path
-                f = open(fname, 'r')
-                sequence = f.read()
-                if (guide_seq not in sequence) and (guide_reverse_complement not in sequence):
-                    gRNA_seq_not_found.append(guide_seq)
-                    gRNA_label_not_found.append(guide_name)
-                    file_name_not_found.append(fname)
-                    #print('string not found in file %s' % fname)
-                elif (guide_seq in sequence) or (guide_reverse_complement in sequence):
-                    gRNA_seq_found.append(guide_seq)
-                    gRNA_label_found.append(guide_name)
-                    file_name_found.append(fname)
-                f.close()
                 
-    df_found = pd.DataFrame(zip(gRNA_label_found, gRNA_seq_found, file_name_found), columns=('GRNA NAME', 'GRNA SEQ', 'CLONES NOT EDITED'))
-    df_not_found = pd.DataFrame(zip(gRNA_label_not_found, gRNA_seq_not_found, file_name_not_found), columns=('GRNA NAME', 'GRNA SEQ', 'EDITED CLONES'))
+    df_found = pd.DataFrame(zip(gRNA_label_found, gRNA_seq_found, file_name_found), columns=('GRNA NAME', 'GRNA SEQ', 'CLONES'))
+    df_not_found = pd.DataFrame(zip(gRNA_label_not_found, gRNA_seq_not_found, file_name_not_found), columns=('GRNA NAME', 'GRNA SEQ', 'CLONES'))
     
     if (not_found == True) and (found == True):      
         return df_not_found, df_found
@@ -582,7 +534,149 @@ def edited_ko_clone(csv_file_with_gRNAs=None, searchstring='', searchstring_name
     else:
         return None
 
+#https://stackabuse.com/python-how-to-flatten-list-of-lists/
+def flatten_list(_2d_list):
+    flat_list = []
+    # Iterate through the outer list
+    for element in _2d_list:
+        if type(element) is list:
+            # If the element is of type list, iterate through the sublist
+            for item in element:
+                flat_list.append(item)
+        else:
+            flat_list.append(element)
+    return flat_list
 
+def add_seq_results_to_df(df):
+    '''Requires df to contain columns "CLONES" - function goes through text files
+    and extracts sequence for to add to df"'''
+    df["SEQUENCE"] = ""
+    for entry in range(len(df)):
+        fname = df["CLONES"].iloc[entry]
+        f = open(fname, 'r')
+        sequence = f.readlines()
+        sequence = sequence[1:]
+        #sequence = flatten_list(sequence)
+        sequence = "".join(sequence)
+        sequence = sequence.replace(" ", "")
+        sequence = sequence.replace("\n", "")
+        #print(sequence)
+        df["SEQUENCE"].iloc[entry] = sequence
+    return df
+        
+def translate(seq):
+       
+    table = {
+        'ATA':'I', 'ATC':'I', 'ATT':'I', 'ATG':'M',
+        'ACA':'T', 'ACC':'T', 'ACG':'T', 'ACT':'T',
+        'AAC':'N', 'AAT':'N', 'AAA':'K', 'AAG':'K',
+        'AGC':'S', 'AGT':'S', 'AGA':'R', 'AGG':'R',                 
+        'CTA':'L', 'CTC':'L', 'CTG':'L', 'CTT':'L',
+        'CCA':'P', 'CCC':'P', 'CCG':'P', 'CCT':'P',
+        'CAC':'H', 'CAT':'H', 'CAA':'Q', 'CAG':'Q',
+        'CGA':'R', 'CGC':'R', 'CGG':'R', 'CGT':'R',
+        'GTA':'V', 'GTC':'V', 'GTG':'V', 'GTT':'V',
+        'GCA':'A', 'GCC':'A', 'GCG':'A', 'GCT':'A',
+        'GAC':'D', 'GAT':'D', 'GAA':'E', 'GAG':'E',
+        'GGA':'G', 'GGC':'G', 'GGG':'G', 'GGT':'G',
+        'TCA':'S', 'TCC':'S', 'TCG':'S', 'TCT':'S',
+        'TTC':'F', 'TTT':'F', 'TTA':'L', 'TTG':'L',
+        'TAC':'Y', 'TAT':'Y', 'TAA':'_', 'TAG':'_',
+        'TGC':'C', 'TGT':'C', 'TGA':'_', 'TGG':'W',
+    }
+    protein =""
+    #if len(seq)%3 == 0:
+    for i in range(0, len(seq), 3):
+        codon = seq[i:i + 3]
+        if (len(codon) == 3) and codon in table.keys():
+            protein+= table[codon]
+    return protein
+    
+    
+def translate_df_entry_to_protein(df):
+    #https://stackoverflow.com/questions/49073217/how-to-use-biopython-to-translate-a-series-of-dna-sequences-in-a-fasta-file-and
+    '''takes a df and translates DNA sequence into protein.
+    "CLONES"'''
+    protein_seq = []
+    protein_seq_rev_complement = []
+    aa_seq = []
+    aa_seq_rev_complement = []
+    edited_clones = []
+    protein_seq_final = []
+    protein_seq_final_rev_complement = []
+    for row in range(len(df)):
+        dna_seqs = df["SEQUENCE"].iloc[row]
+        # generate all translation frames
+        for i in range(3):
+            frames = dna_seqs[i:]
+            aa_seq.append(translate(frames))
+            frames_rev_complement = Seq(dna_seqs).reverse_complement()
+            frames_rev_complement = str(frames_rev_complement)
+            frames_rev_complement = frames_rev_complement[i:]
+            aa_seq_rev_complement.append(translate(frames_rev_complement))
+            edited_clones.append(df["CLONES"].iloc[row])
+        protein_seq.append(aa_seq)
+        protein_seq_rev_complement.append(aa_seq_rev_complement)
+    
+    protein_seq_final = flatten_list(protein_seq)
+    protein_seq_rev_complement_final = flatten_list(protein_seq_rev_complement)
+        
+    df_aa = pd.DataFrame(zip(edited_clones, protein_seq_final, protein_seq_rev_complement_final), columns=('CLONES', 'AA_SEQ', 'AA_SEQ_REV_COMPL'))
+    return df_aa
+
+def extract_nt_from_sangerseq_around_grna(file, df, upstream_dist = 50, downstream_dist = 50):
+    '''Function to extract a DNA sequence around a gRNA site. 
+    Requires a txt file containing wild type sanger seq results. txt file needs to contain "wild" in 
+    name. df needs to contain a column "GRNA NAME" and "GRNA SEQ" (containing gRNA sequence).
+    "'''
+    #open file, read text except first line
+    f = open(file, 'r')
+    sequence = f.readlines()
+    sequence = sequence[1:]
+    sequence = "".join(sequence)
+    sequence = sequence.replace(" ", "")
+    sequence = sequence.replace("\n", "")
+    f.close()
+    
+    #extract unique guide sequences from df
+    df = df.drop_duplicates('GRNA NAME')
+    df["WT-SEQ " + str(upstream_dist)] = ''
+    df["FIRST_20NT"] = 0
+    df["LAST_20NT"] = 0
+
+    #position_of_guide in seq
+    #position_of_guide = []
+        
+    for row in range(len(df)):
+        position_in_seq = sequence.find(df["GRNA SEQ"].iloc[row])
+        #if forward guide seq not found in seq
+        if position_in_seq == -1:
+            entry_rc = Seq(df["GRNA SEQ"].iloc[row]).reverse_complement()
+            entry_rc = str(entry_rc)
+            position_in_seq_rc = sequence.find(entry_rc)
+            #position_of_guide.append(position_in_seq_rc)
+            beginning = position_in_seq_rc - upstream_dist
+            end = position_in_seq_rc + downstream_dist
+            extract = sequence[beginning:end]
+            df["WT-SEQ " + str(upstream_dist)].iloc[row] = extract
+            first_20_nt = extract[:20]
+            last_20_nt = extract[-20:]
+            df["FIRST_20NT"].iloc[row] = first_20_nt
+            df["LAST_20NT"].iloc[row] = last_20_nt            
+        else:
+            #position_of_guide.append(position_in_seq)
+            beginning = position_in_seq - upstream_dist
+            end = position_in_seq + downstream_dist
+            extract = sequence[beginning:end]
+            df["WT-SEQ " + str(upstream_dist)].iloc[row] = extract
+            first_20_nt = extract[:20]
+            last_20_nt = extract[-20:]
+            df["FIRST_20NT"].iloc[row] = first_20_nt
+            df["LAST_20NT"].iloc[row] = last_20_nt            
+
+    return df
+
+                     
 if __name__ == "__main__":
     print("This is just a module")
 
